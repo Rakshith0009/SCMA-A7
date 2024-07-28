@@ -1,4 +1,2 @@
-streamlit
-pandas
-matplotlib
-seaborn
+streamlit==1.23.1  # Make sure to use the latest version
+requests==2.31.0   # Make sure to use the latest version
