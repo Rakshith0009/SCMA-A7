@@ -1,63 +1,49 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import CountVectorizer
+from datetime import datetime
 
-# Sample data
-books = pd.DataFrame({
-    'book_id': [1, 2, 3, 4, 5],
-    'title': ['Book A', 'Book B', 'Book C', 'Book D', 'Book E'],
-    'author': ['Author A', 'Author B', 'Author C', 'Author D', 'Author E']
-})
+# Initialize session state
+if 'data' not in st.session_state:
+    st.session_state['data'] = pd.DataFrame(columns=['Date', 'Exercise', 'Water Intake (L)', 'Sleep (hours)'])
 
-ratings = pd.DataFrame({
-    'user_id': [1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5],
-    'book_id': [1, 2, 3, 1, 2, 1, 2, 4, 3, 4, 5, 2, 3],
-    'rating': [5, 4, 3, 4, 5, 5, 4, 2, 5, 4, 3, 5, 4]
-})
+# Page title
+st.title('Health and Fitness Tracker')
 
-# Function to get book title from book_id
-def get_title(book_id):
-    return books.loc[books['book_id'] == book_id, 'title'].values[0]
+# Input fields
+date = st.date_input('Date', datetime.today())
+exercise = st.text_input('Exercise (e.g., running, cycling, etc.)')
+water_intake = st.number_input('Water Intake (liters)', min_value=0.0, step=0.1)
+sleep_hours = st.number_input('Sleep (hours)', min_value=0.0, step=0.1)
 
-# Function to recommend books based on user ratings
-def recommend_books(user_id, num_recommendations=3):
-    # Create a pivot table
-    user_book_ratings = ratings.pivot(index='user_id', columns='book_id', values='rating').fillna(0)
+# Submit button
+if st.button('Add Entry'):
+    new_entry = pd.DataFrame({
+        'Date': [date],
+        'Exercise': [exercise],
+        'Water Intake (L)': [water_intake],
+        'Sleep (hours)': [sleep_hours]
+    })
+    st.session_state['data'] = pd.concat([st.session_state['data'], new_entry], ignore_index=True)
 
-    # Compute cosine similarity between users
-    user_similarity = cosine_similarity(user_book_ratings)
+# Display data
+st.subheader('Logged Entries')
+st.write(st.session_state['data'])
 
-    # Get the index of the given user_id
-    user_idx = user_id - 1
+# Statistics
+st.subheader('Statistics')
+if not st.session_state['data'].empty:
+    avg_water_intake = st.session_state['data']['Water Intake (L)'].mean()
+    avg_sleep_hours = st.session_state['data']['Sleep (hours)'].mean()
+    st.write(f'Average Water Intake: {avg_water_intake:.2f} liters/day')
+    st.write(f'Average Sleep: {avg_sleep_hours:.2f} hours/night')
+else:
+    st.write('No data to display statistics.')
 
-    # Get the similarity scores for the given user_id
-    sim_scores = list(enumerate(user_similarity[user_idx]))
+# Export data
+st.subheader('Export Data')
+if st.button('Export to CSV'):
+    st.session_state['data'].to_csv('health_fitness_data.csv', index=False)
+    st.success('Data exported successfully!')
 
-    # Sort the users based on similarity scores
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-
-    # Get the top similar users
-    sim_scores = sim_scores[1:num_recommendations+1]
-
-    # Get the book ids of the top similar users
-    similar_users = [i[0]+1 for i in sim_scores]
-    similar_users_ratings = ratings[ratings['user_id'].isin(similar_users)]
-
-    # Calculate the mean rating for each book
-    book_recommendations = similar_users_ratings.groupby('book_id')['rating'].mean().sort_values(ascending=False).head(num_recommendations)
-    recommended_books = book_recommendations.index.tolist()
-
-    return [get_title(book_id) for book_id in recommended_books]
-
-# Streamlit application
-st.title("Book Recommendation System")
-
-user_id = st.number_input("Enter User ID:", min_value=1, max_value=5, step=1)
-
-if st.button("Recommend"):
-    recommendations = recommend_books(user_id)
-    st.write("Recommended Books:")
-    for book in recommendations:
-        st.write(book)
+# Footer
+st.write('Made with ❤️ using Streamlit')
